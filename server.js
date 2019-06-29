@@ -12,16 +12,15 @@ const app = express();
 app.use(cors(), errorHandler(), bodyParser.json(), morgan("dev"));
 app.use("/api", apiRouter);
 
-const PORT = process.env.PORT || 8081;
+const PORT = process.env.PORT || 4000;
 
-const errorHandlerFn = (err, req, res) => {
-  console.log("heeee");
+app.use((err, req, res, next) => {
   if (!err.status) {
     err.status = 500;
-  } else {
-    res.sent(err.status).send(err.message);
-  }
-}
+  } 
+  res.status(err.status).send(err.message);
+});
+
 
 app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
 

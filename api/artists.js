@@ -70,4 +70,52 @@ artistsRouter.post("/", validateFields, (req, res, next) => {
 });
 
 
+artistsRouter.put("/:artistId", validateFields, (req, res, next) => {
+  // console.log(req.artist);
+  // console.log(req.body.artist)
+  db.run(`UPDATE Artist SET
+    name = $name, 
+    date_of_birth = $date_of_birth, 
+    biography = $biography, 
+    is_currently_employed = $is_currently_employed
+    WHERE id = $id`,
+    {
+      $name: req.body.artist.name, 
+      $date_of_birth: req.body.artist.dateOfBirth, 
+      $biography: req.body.artist.biography, 
+      $is_currently_employed: req.body.artist.isCurrentlyEmployed,
+      $id: req.params.artistId
+    }, (error) => {
+      if (error) {
+        const err = new Error(error.message);
+        next(err);
+      } else {
+        db.get(`SELECT * FROM Artist WHERE id = ${req.params.artistId}`,
+          (error, row) => {
+            res.status(200).send({artist: row});
+          }
+        );
+      }
+    }
+  );
+});
+
+artistsRouter.delete("/:artistId", (req, res, next) => {
+  db.run(`UPDATE Artist SET is_currently_employed = 0 WHERE id = ${req.artist.id}`,
+    (error) => {
+      if (error) {
+        const err = new Error(error.message);
+        next(err);
+      } else {
+        db.get(`SELECT * FROM Artist WHERE id = ${req.params.artistId}`,
+          (error, row) => {
+            res.status(200).send({artist: row});
+          }
+        );
+      }
+    }
+  ); 
+});
+
+
 module.exports = artistsRouter;
