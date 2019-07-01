@@ -4,15 +4,12 @@ const sqlite3 = require("sqlite3");
 const db = new sqlite3.Database(process.env.TEST_DATABASE || "./database.sqlite");
 
 const issuesRouter = require("./issues");
-seriesRouter.use("/:seriesId/issues", issuesRouter);
 
 seriesRouter.param("seriesId", (req, res, next, id) =>{
   db.get(`SELECT * FROM Series WHERE id = ${id}`,
     (error, row) => {
       if (!row) {
-        const err = new Error("Series not found");
-        err.status = 404;
-        next(err);
+        res.sendStatus(404);
       } else {
         req.series = row;
         next();
@@ -21,36 +18,38 @@ seriesRouter.param("seriesId", (req, res, next, id) =>{
   );
 });
 
+
+seriesRouter.use("/:seriesId/issues", issuesRouter); // para poder aproveiter a seriesRouter.param fn
+
+
 seriesRouter.get("/", (req, res, next) => {
   db.all("SELECT * FROM Series",
     (error, rows) => {
       if (error) {
-        const err = new Error(error.message);
-        next(err)
+        next(error)
       } else {
-        res.status(200).send({series: rows});
+        res.status(200).json({series: rows});
       }
     }
   );
 });
 
-
 seriesRouter.get("/:seriesId", (req, res, next) => {
-  res.status(200).send({series: req.series});
+  res.status(200).json({series: req.series});
 });
 
 const validateFields = (req, res, next) => {
-  if (!req.body.series.name || !req.body.series.description) {
-    const err = new Error("Required field(s) missing");
-    err.status = 400;
-    next(err);
+  const series = req.body.series;
+  if (!series.name || !series.description) {
+    res.status(400).send("Required field(s) missing");
   } else {
     next()
   }
 };
 
 seriesRouter.post("/", validateFields, (req, res, next) => {
-  db.run(`INSERT INTO Series (name, description) VALUES ("${req.body.series.name}", "${req.body.series.description}")`,
+  const series = req.body.series;
+  db.run(`INSERT INTO Series (name, description) VALUES ("${series.name}", "${series.description}")`,
     function(error) {
       if (error) {
         next(error);
@@ -70,15 +69,15 @@ seriesRouter.post("/", validateFields, (req, res, next) => {
 });
 
 seriesRouter.put("/:seriesId", validateFields, (req, res, next) => {
-  db.run(`UPDATE Series SET name = "${req.body.series.name}", description = "${req.body.series.description}" WHERE id = ${req.params.seriesId}`,
+  const series = req.body.series;
+  db.run(`UPDATE Series SET name = "${series.name}", description = "${series.description}" WHERE id = ${req.params.seriesId}`,
     (error) => {
       if (error) {
-        const err = new Error(error.message);
-        next(err);
+        next(error);
       } else {
         db.get(`SELECT * FROM Series WHERE id = ${req.params.seriesId}`,
           (error, row) => {
-            res.status(200).send({series: row});
+            res.status(200).json({series: row});
           }
         );
       }
@@ -88,23 +87,22 @@ seriesRouter.put("/:seriesId", validateFields, (req, res, next) => {
 
 seriesRouter.delete("/:seriesId", (req, res, next) => { 
   db.get(`SELECT * FROM Issue WHERE series_id = ${req.params.seriesId}`,
-  (error, row) => {
-    if (error) {
-      const err = new Error(error);
-      return next(err);
-    } if (row) {
-      return res.status(400).send("Series has issues init, can't delete");
-    }
-    db.run(`DELETE FROM Series WHERE id = ${req.params.seriesId}`,
-    (error) => {
+    (error, row) => {
       if (error) {
-        const err = new Error(error);
-        return next(err);
+        return next(error);
+      } if (row) {
+        return res.status(400).send("Series has issues init, can't delete");
       }
-      return res.sendStatus(204);
-      }
-    );
-  });
+      db.run(`DELETE FROM Series WHERE id = ${req.params.seriesId}`,
+        (error) => {
+          if (error) {
+            return next(error);
+          }
+          return res.sendStatus(204);
+        }
+      );
+    }
+  );
 });
 
 

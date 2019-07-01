@@ -23,7 +23,6 @@ artistsRouter.get("/", (req, res, next) => {
   db.all("SELECT * FROM Artist WHERE is_currently_employed = 1",
   (error, rows) => {
     if (error) {
-      error.status = 404;
       next(error);
     } else {
       res.status(200).json({artists: rows});
@@ -36,27 +35,26 @@ artistsRouter.get("/:artistId", (req, res) => {
 });
 
 const validateFields = (req, res, next) => {
-  if (!req.body.artist.isCurrentlyEmployed) {
-    req.body.artist.isCurrentlyEmployed = 1;
-  }
-  if (req.body.artist.name && req.body.artist.dateOfBirth && req.body.artist.biography) {
+  const artist = req.body.artist;
+  artist.isCurrentlyEmployed = artist.isCurrentlyEmployed === 0 ? 0 : 1;
+  if (artist.name && artist.dateOfBirth && artist.biography) {
     return next();
   }
   return res.sendStatus(400);
 }
 
 artistsRouter.post("/", validateFields, (req, res, next) => {
+  const artist = req.body.artist;
   db.run(`INSERT INTO Artist (name, date_of_birth, biography, is_currently_employed) VALUES 
     ($name, $date_of_birth, $biography, $is_currently_employed)`,
     {
-      $name: req.body.artist.name,
-      $date_of_birth: req.body.artist.dateOfBirth,
-      $biography: req.body.artist.biography,
-      $is_currently_employed: req.body.artist.isCurrentlyEmployed
+      $name: artist.name,
+      $date_of_birth: artist.dateOfBirth,
+      $biography: artist.biography,
+      $is_currently_employed: artist.isCurrentlyEmployed
     },
     function(error) {
       if (error) {
-        error.status = 500;
         next(error);
       } else {
         db.get(`SELECT * FROM Artist WHERE id = ${this.lastID}`,
@@ -69,10 +67,7 @@ artistsRouter.post("/", validateFields, (req, res, next) => {
   );
 });
 
-
 artistsRouter.put("/:artistId", validateFields, (req, res, next) => {
-  // console.log(req.artist);
-  // console.log(req.body.artist)
   db.run(`UPDATE Artist SET
     name = $name, 
     date_of_birth = $date_of_birth, 
@@ -87,8 +82,7 @@ artistsRouter.put("/:artistId", validateFields, (req, res, next) => {
       $id: req.params.artistId
     }, (error) => {
       if (error) {
-        const err = new Error(error.message);
-        next(err);
+        next(error);
       } else {
         db.get(`SELECT * FROM Artist WHERE id = ${req.params.artistId}`,
           (error, row) => {
@@ -104,8 +98,7 @@ artistsRouter.delete("/:artistId", (req, res, next) => {
   db.run(`UPDATE Artist SET is_currently_employed = 0 WHERE id = ${req.artist.id}`,
     (error) => {
       if (error) {
-        const err = new Error(error.message);
-        next(err);
+        next(error);
       } else {
         db.get(`SELECT * FROM Artist WHERE id = ${req.params.artistId}`,
           (error, row) => {

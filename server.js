@@ -9,18 +9,12 @@ const apiRouter = require("./api/api");
 
 const app = express();
 
-app.use(cors(), errorHandler(), bodyParser.json(), morgan("dev"));
+app.use(cors(), bodyParser.json(), morgan("dev"));
 app.use("/api", apiRouter);
 
 const PORT = process.env.PORT || 4000;
 
-app.use((err, req, res, next) => {
-  if (!err.status) {
-    err.status = 500;
-  } 
-  res.status(err.status).send(err.message);
-});
-
+app.use(errorHandler());
 
 app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
 
